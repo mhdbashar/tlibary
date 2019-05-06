@@ -65,39 +65,39 @@ class User extends CI_Controller{
     /*
      * Editing a user
      */
-    // function edit($id)
-    // {   
-    //     // check if the user exists before trying to edit it
-    //     $data['user'] = $this->User_model->get_user($id);
+    function edit($id)
+    {   
+        // check if the user exists before trying to edit it
+        $data['user'] = $this->User_model->get_user($id);
         
-    //     if(isset($data['user']['id']))
-    //     {
-    //         $this->load->library('form_validation');
+        if(isset($data['user']['id']))
+        {
+            $this->load->library('form_validation');
 
-	// 		$this->form_validation->set_rules('passwd','Passwd','required|max_length[200]');
-	// 		$this->form_validation->set_rules('name','Name','required|max_length[200]');
-	// 		$this->form_validation->set_rules('email','Email','required|max_length[200]|valid_email');
+			$this->form_validation->set_rules('passwd','Passwd','required|md5|max_length[200]');
+			$this->form_validation->set_rules('name','Name','required|max_length[200]');
+			$this->form_validation->set_rules('email','Email','required|max_length[200]|valid_email');
 		
-	// 		if($this->form_validation->run())     
-    //         {   
-    //             $params = array(
-	// 				'passwd' => $this->input->post('passwd'),
-	// 				'name' => $this->input->post('name'),
-	// 				'email' => $this->input->post('email'),
-    //             );
+			if($this->form_validation->run())     
+            {   
+                $params = array(
+					'passwd' => $this->input->post('passwd'),
+					'name' => $this->input->post('name'),
+					'email' => $this->input->post('email'),
+                );
 
-    //             $this->User_model->update_user($id,$params);            
-    //             redirect('user/index');
-    //         }
-    //         else
-    //         {
-    //             $data['_view'] = 'user/edit';
-    //             $this->load->view('layouts/main',$data);
-    //         }
-    //     }
-    //     else
-    //         show_error('The user you are trying to edit does not exist.');
-    // } 
+                $this->User_model->update_user($id,$params);            
+                redirect('user/index');
+            }
+            else
+            {
+                $data['_view'] = 'user/edit';
+                $this->load->view('layouts/main',$data);
+            }
+        }
+        else
+            show_error('The user you are trying to edit does not exist.');
+    } 
 
     /*
      * Deleting user

@@ -17,7 +17,7 @@
 					<div class="col-md-6">
 						<label for="passwd" class="control-label"><span class="text-danger">*</span>Passwd</label>
 						<div class="form-group">
-							<input type="text" name="passwd" value="<?php echo ($this->input->post('passwd') ? $this->input->post('passwd') : $user['passwd']); ?>" class="form-control" id="passwd" />
+							<input type="password" name="passwd" value="" class="form-control" id="passwd" />
 							<span class="text-danger"><?php echo form_error('passwd');?></span>
 						</div>
 					</div>

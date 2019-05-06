@@ -19,6 +19,9 @@
         <!-- AdminLTE Skins. Choose a skin from the css/skins
              folder instead of downloading all of them to reduce the load. -->
         <link rel="stylesheet" href="<?php echo site_url('resources/css/_all-skins.min.css');?>">
+
+        <link href="<?php echo base_url('resources/plugins/datatables/css/dataTables.bootstrap.min.css')?>" rel="stylesheet">
+        <link href="<?php echo base_url('resources/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css')?>" rel="stylesheet">
     </head>
     
     <body class="hold-transition skin-blue sidebar-mini">
@@ -97,17 +100,9 @@
                             </a>
                         </li>
 						<li>
-                            <a href="#">
-                                <i class="fa fa-book"></i> <span>Book</span>
-                            </a>
-                            <ul class="treeview-menu">
-								<li class="active">
-                                    <a href="<?php echo site_url('book/add');?>"><i class="fa fa-plus"></i> Add</a>
-                                </li>
-								<li>
-                                    <a href="<?php echo site_url('book/index');?>"><i class="fa fa-list-ul"></i> Listing</a>
-                                </li>
-							</ul>
+                            <a href="<?php echo site_url('book');?>">
+                                <i class="fa fa-book"></i> <span>Book</span>   
+                            </a>                        
                         </li>
 						<li>
                             <a href="#">
@@ -209,5 +204,10 @@
         <script src="<?php echo site_url('resources/js/moment.js');?>"></script>
         <script src="<?php echo site_url('resources/js/bootstrap-datetimepicker.min.js');?>"></script>
         <script src="<?php echo site_url('resources/js/global.js');?>"></script>
+        <!-- Data tables -->
+        <script src="<?php echo base_url('resources/plugins/datatables/js/jquery.dataTables.min.js')?>"></script>
+        <script src="<?php echo base_url('resources/plugins/datatables/js/dataTables.bootstrap.min.js')?>"></script>
+        <!-- Date picker -->
+        <script src="<?php echo base_url('resources/plugins/bootstrap-datepicker/js/bootstrap-datepicker.min.js')?>"></script>
     </body>
 </html>

@@ -4,146 +4,221 @@ class Book extends CI_Controller{
     function __construct()
     {
         parent::__construct();
-        $this->load->model('Book_model');
+        $this->load->model('Book_model','Book');
+        $this->load->model('Category_model','Category');
+
     } 
 
-    /*
-     * Listing of books
-     */
+
+    // main books view
     function index()
     {
 
         check_admin_login();
 
-        $params['limit'] = RECORDS_PER_PAGE; 
-        $params['offset'] = ($this->input->get('per_page')) ? $this->input->get('per_page') : 0;
-        
-        $config = $this->config->item('pagination');
-        $config['base_url'] = site_url('book/index?');
-        $config['total_rows'] = $this->Book_model->get_all_books_count();
-        $this->pagination->initialize($config);
-
-        $data['books'] = $this->Book_model->get_all_books($params);
-        
-        $data['_view'] = 'book/index';
+        $data['Categories']= $this->Category->get_all_categories();
+        $data['_view'] = 'book/books';
         $this->load->view('layouts/main',$data);
     }
 
-    /*
-     * Adding a new book
-     */
-    function add()
-    {   
+    // prepare data
+    public function ajax_list()
+	{
         check_admin_login();
 
-        $this->load->library('form_validation');
+		$list = $this->Book->get_datatables();
+		$data = array();
+		$no = $_POST['start'];
+		foreach ($list as $Book) {
+			$no++;
+            $row = array();
+			$row[] = $Book->name;
+			$row[] = $this->Category->get_category($Book->category_id)['name'];
+			$row[] = $Book->ISBN;
+			$row[] = $Book->author;
+            $row[] = $Book->publisher;
+            $row[] = $Book->price." $";
+			$row[] = $Book->discount." $";            
+			$row[] = $Book->description;
+			$row[] = $Book->published_date;
+			if($Book->photo)
+				$row[] = '<a href="'.base_url('upload/'.$Book->photo).'" target="_blank"><img src="'.base_url('upload/'.$Book->photo).'" class="img-responsive" /></a>';
+			else
+				$row[] = '(No photo)';
 
-		$this->form_validation->set_rules('category_id','Category Id','required');
-		$this->form_validation->set_rules('author','Author','required');
-		$this->form_validation->set_rules('publisher','Publisher','required');
-		$this->form_validation->set_rules('price','Price','numeric');
-		$this->form_validation->set_rules('discount','Discount','numeric');
-		$this->form_validation->set_rules('name','Name','required');
-		$this->form_validation->set_rules('ISBN','ISBN','required');
+			//add html for action
+			$row[] = '<a class="btn btn-sm btn-primary" href="javascript:void(0)" title="Edit" onclick="edit_book('."'".$Book->id."'".')"><i class="glyphicon glyphicon-pencil"></i> Edit</a>
+				  <a class="btn btn-sm btn-danger" href="javascript:void(0)" title="Hapus" onclick="delete_book('."'".$Book->id."'".')"><i class="glyphicon glyphicon-trash"></i> Delete</a>';
 		
-		if($this->form_validation->run())     
-        {   
-            $params = array(
-				'category_id' => $this->input->post('category_id'),
-				'author' => $this->input->post('author'),
-				'publisher' => $this->input->post('publisher'),
-				'price' => $this->input->post('price'),
-				'discount' => $this->input->post('discount'),
-				'published_date' => $this->input->post('published_date'),
-				'number_of_sales' => $this->input->post('number_of_sales'),
+			$data[] = $row;
+		}
+
+		$output = array(
+						"draw" => $_POST['draw'],
+						"recordsTotal" => $this->Book->count_all(),
+						"recordsFiltered" => $this->Book->count_filtered(),
+						"data" => $data,
+				);
+		//output to json format
+		echo json_encode($output);
+	}
+
+	public function ajax_edit($id)
+	{
+        check_admin_login();
+
+		$data = $this->Book->get_by_id($id);
+		$data->published_date = ($data->published_date == '0000-00-00') ? '' : $data->published_date; // if 0000-00-00 set tu empty for datepicker compatibility
+		echo json_encode($data);
+	}
+
+	public function ajax_add()
+	{
+        check_admin_login();
+
+		$this->_validate();
+		
+		$data = array(
 				'name' => $this->input->post('name'),
+				'category_id' => $this->input->post('category_id'),
 				'ISBN' => $this->input->post('ISBN'),
+				'author' => $this->input->post('author'),
+                'publisher' => $this->input->post('publisher'),
+                'price' => $this->input->post('price'),
 				'description' => $this->input->post('description'),
-            );
-            
-            $book_id = $this->Book_model->add_book($params);
-            redirect('book/index');
-        }
-        else
-        {
-			$this->load->model('Category_model');
-			$data['all_categories'] = $this->Category_model->get_all_categories();
-            
-            $data['_view'] = 'book/add';
-            $this->load->view('layouts/main',$data);
-        }
-    }  
+				'discount' => $this->input->post('discount'),
+                'published_date' => $this->input->post('published_date'),
+			);
 
-    /*
-     * Editing a book
-     */
-    function edit($id)
-    {   
+		if(!empty($_FILES['photo']['name']))
+		{
+			$upload = $this->_do_upload();
+			$data['photo'] = $upload;
+		}
+
+		$insert = $this->Book->save($data);
+
+		echo json_encode(array("status" => TRUE));
+	}
+
+	public function ajax_update()
+	{
+
         check_admin_login();
 
-        // check if the book exists before trying to edit it
-        $data['book'] = $this->Book_model->get_book($id);
-        
-        if(isset($data['book']['id']))
-        {
-            $this->load->library('form_validation');
+		$this->_validate();
+		$data = array(
+            'name' => $this->input->post('name'),
+            'category_id' => $this->input->post('category_id'),
+            'ISBN' => $this->input->post('ISBN'),
+            'author' => $this->input->post('author'),
+            'publisher' => $this->input->post('publisher'),
+            'price' => $this->input->post('price'),
+            'description' => $this->input->post('description'),
+            'discount' => $this->input->post('discount'),
+            'published_date' => $this->input->post('published_date'),
+        );
 
-			$this->form_validation->set_rules('category_id','Category Id','required');
-			$this->form_validation->set_rules('author','Author','required');
-			$this->form_validation->set_rules('publisher','Publisher','required');
-			$this->form_validation->set_rules('price','Price','numeric');
-			$this->form_validation->set_rules('discount','Discount','numeric');
-			$this->form_validation->set_rules('name','Name','required');
-			$this->form_validation->set_rules('ISBN','ISBN','required');
+		if($this->input->post('remove_photo')) // if remove photo checked
+		{
+			if(file_exists('upload/'.$this->input->post('remove_photo')) && $this->input->post('remove_photo'))
+				unlink('upload/'.$this->input->post('remove_photo'));
+			$data['photo'] = '';
+		}
+
+		if(!empty($_FILES['photo']['name']))
+		{
+			$upload = $this->_do_upload();
+			
+			//delete file
+			$Book = $this->Book->get_by_id($this->input->post('id'));
+			if(file_exists('upload/'.$Book->photo) && $Book->photo)
+				unlink('upload/'.$Book->photo);
+
+			$data['photo'] = $upload;
+		}
+
+		$this->Book->update(array('id' => $this->input->post('id')), $data);
+		echo json_encode(array("status" => TRUE));
+	}
+
+	public function ajax_delete($id)
+	{
+		//delete file
+		$Book = $this->Book->get_by_id($id);
+		if(file_exists('upload/'.$Book->photo) && $Book->photo)
+			unlink('upload/'.$Book->photo);
 		
-			if($this->form_validation->run())     
-            {   
-                $params = array(
-					'category_id' => $this->input->post('category_id'),
-					'author' => $this->input->post('author'),
-					'publisher' => $this->input->post('publisher'),
-					'price' => $this->input->post('price'),
-					'discount' => $this->input->post('discount'),
-					'published_date' => $this->input->post('published_date'),
-					'number_of_sales' => $this->input->post('number_of_sales'),
-					'name' => $this->input->post('name'),
-					'ISBN' => $this->input->post('ISBN'),
-					'description' => $this->input->post('description'),
-                );
+		$this->Book->delete_by_id($id);
+		echo json_encode(array("status" => TRUE));
+	}
 
-                $this->Book_model->update_book($id,$params);            
-                redirect('book/index');
-            }
-            else
-            {
-				$this->load->model('Category_model');
-				$data['all_categories'] = $this->Category_model->get_all_categories();
+	private function _do_upload()
+	{
 
-                $data['_view'] = 'book/edit';
-                $this->load->view('layouts/main',$data);
-            }
-        }
-        else
-            show_error('The book you are trying to edit does not exist.');
-    } 
+        // https://www.codeigniter.com/user_guide/libraries/file_uploading.html
+		$config['upload_path']          = 'upload/';
+        $config['allowed_types']        = 'gif|jpg|png';
+        $config['max_size']             = 3000; //set max size allowed in Kilobyte
+        // $config['max_width']            = 1000; // set max width image allowed
+        // $config['max_height']           = 1000; // set max height allowed
+        $config['file_name']            = $this->input->post('name').round(microtime(true) * 1000); //for unique name (book name + milisecond timestamp fot)
 
-    /*
-     * Deleting book
-     */
-    function remove($id)
-    {
-        check_admin_login();
+        $this->load->library('upload', $config);
 
-        $book = $this->Book_model->get_book($id);
-
-        // check if the book exists before trying to delete it
-        if(isset($book['id']))
+        if(!$this->upload->do_upload('photo')) //upload and validate
         {
-            $this->Book_model->delete_book($id);
-            redirect('book/index');
-        }
-        else
-            show_error('The book you are trying to delete does not exist.');
-    }
-    
+            $data['inputerror'][] = 'photo';
+			$data['error_string'][] = 'Upload error: '.$this->upload->display_errors('',''); //show ajax error
+			$data['status'] = FALSE;
+			echo json_encode($data);
+			exit();
+		}
+		return $this->upload->data('file_name');
+	}
+
+	private function _validate()
+	{
+        // `id`, `name`, `category_id`, `ISBN`, `author`, `publisher`, `price`, `description`, `discount`, `published_date`, `photo`
+
+		$data = array();
+		$data['error_string'] = array();
+		$data['inputerror'] = array();
+		$data['status'] = TRUE;
+
+		if($this->input->post('name') == '')
+		{
+			$data['inputerror'][] = 'name';
+			$data['error_string'][] = 'Book name is required';
+			$data['status'] = FALSE;
+		}
+
+		if($this->input->post('ISBN') == '')
+		{
+			$data['inputerror'][] = 'ISBN';
+			$data['error_string'][] = 'ISBN is required';
+			$data['status'] = FALSE;
+		}
+
+		if($this->input->post('author') == '')
+		{
+			$data['inputerror'][] = 'author';
+			$data['error_string'][] = 'Book Author is required';
+			$data['status'] = FALSE;
+		}
+
+		if($this->input->post('price') == '')
+		{
+			$data['inputerror'][] = 'price';
+			$data['error_string'][] = 'Book price is required';
+			$data['status'] = FALSE;
+		}
+
+		if($data['status'] === FALSE)
+		{
+			echo json_encode($data);
+			exit();
+		}
+	}
+
 }
